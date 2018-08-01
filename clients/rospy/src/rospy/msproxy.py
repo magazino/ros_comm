@@ -87,7 +87,6 @@ class MasterProxy(object):
         @type  uri: str
         """
         self.target = rospy.core.xmlrpcapi(uri)        
-        self._lock = Lock()
 
     def __getattr__(self, key): #forward api calls to target
         if key in _master_arg_remap:
@@ -101,9 +100,8 @@ class MasterProxy(object):
                 i = i + 1 #callerId does not count
                 #print "Remap %s => %s"%(args[i], rospy.names.resolve_name(args[i]))
                 args[i] = rospy.names.resolve_name(args[i])
-            with self._lock:
-                f = getattr(self.target, key)
-                return f(*args, **kwds)
+            f = getattr(self.target, key)
+            return f(*args, **kwds)
         return wrappedF
 
     def __getitem__(self, key):
@@ -117,8 +115,7 @@ class MasterProxy(object):
         #NOTE: remapping occurs here!
         resolved_key = rospy.names.resolve_name(key)
         if 1: # disable param cache
-            with self._lock:
-                code, msg, value = self.target.getParam(rospy.names.get_caller_id(), resolved_key)
+            code, msg, value = self.target.getParam(rospy.names.get_caller_id(), resolved_key)
             if code != 1: #unwrap value with Python semantics
                 raise KeyError(key)
             return value
@@ -128,8 +125,7 @@ class MasterProxy(object):
             return rospy.impl.paramserver.get_param_server_cache().get(resolved_key)
         except KeyError:
             # first access, make call to parameter server
-            with self._lock:
-                code, msg, value = self.target.subscribeParam(rospy.names.get_caller_id(), rospy.core.get_node_uri(), resolved_key)
+            code, msg, value = self.target.subscribeParam(rospy.names.get_caller_id(), rospy.core.get_node_uri(), resolved_key)
             if code != 1: #unwrap value with Python semantics
                 raise KeyError(key)
             # set the value in the cache so that it's marked as subscribed
@@ -144,8 +140,7 @@ class MasterProxy(object):
         @param val: parameter value
         @type val: XMLRPC legal value
         """
-        with self._lock:
-            self.target.setParam(rospy.names.get_caller_id(), rospy.names.resolve_name(key), val)
+        self.target.setParam(rospy.names.get_caller_id(), rospy.names.resolve_name(key), val)
         
     def search_param(self, key):
         """
@@ -158,8 +153,7 @@ class MasterProxy(object):
         mappings = rospy.names.get_mappings()
         if key in mappings:
             key = mappings[key]
-        with self._lock:
-            code, msg, val = self.target.searchParam(rospy.names.get_caller_id(), key)
+        code, msg, val = self.target.searchParam(rospy.names.get_caller_id(), key)
         if code == 1:
             return val
         elif code == -1:
@@ -174,8 +168,7 @@ class MasterProxy(object):
         @raise ROSException: if parameter server reports an error
         """
         resolved_key = rospy.names.resolve_name(key)
-        with self._lock:
-            code, msg, _ = self.target.deleteParam(rospy.names.get_caller_id(), resolved_key)
+        code, msg, _ = self.target.deleteParam(rospy.names.get_caller_id(), resolved_key)
         if code == -1:
             raise KeyError(key)
         elif code != 1:
@@ -191,8 +184,7 @@ class MasterProxy(object):
         @type key: str
         @raise ROSException: if parameter server reports an error
         """        
-        with self._lock:
-            code, msg, value = self.target.hasParam(rospy.names.get_caller_id(), rospy.names.resolve_name(key))
+        code, msg, value = self.target.hasParam(rospy.names.get_caller_id(), rospy.names.resolve_name(key))
         if code != 1:
             raise rospy.exceptions.ROSException("cannot check parameter on server: %s"%msg)
         return value
@@ -201,8 +193,7 @@ class MasterProxy(object):
         """
         @raise ROSException: if parameter server reports an error
         """
-        with self._lock:
-            code, msg, value = self.target.getParamNames(rospy.names.get_caller_id())
+        code, msg, value = self.target.getParamNames(rospy.names.get_caller_id())
         if code == 1:
             return value.__iter__()
         else:
