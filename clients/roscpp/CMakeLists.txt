@@ -8,6 +8,9 @@ endif()
 find_package(catkin REQUIRED COMPONENTS
   cpp_common message_generation rosconsole roscpp_serialization roscpp_traits rosgraph_msgs rostime std_msgs xmlrpcpp
 )
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(SYSTEMD "libsystemd" REQUIRED)
 
 catkin_package_xml()
 # split version in parts and pass to extra file
@@ -24,7 +27,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/ros/common.h.in ${CATKIN_DEVE
 
 find_package(Boost REQUIRED COMPONENTS chrono filesystem signals system)
 
-include_directories(include ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_INCLUDE_DESTINATION}/ros ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+include_directories(include ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_INCLUDE_DESTINATION}/ros ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${SYSTEMD_INCLUDE_DIRS})
 
 add_message_files(
   DIRECTORY msg
@@ -129,6 +132,7 @@ add_dependencies(roscpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TA
 target_link_libraries(roscpp
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${SYSTEMD_LIBRARIES}
   )
 
 #explicitly install library and includes

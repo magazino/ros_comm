@@ -41,6 +41,8 @@
 #include "ros/param.h"
 
 #include <rosgraph_msgs/Log.h>
+#define SD_JOURNAL_SUPPRESS_LOCATION
+#include <systemd/sd-journal.h>
 
 namespace ros
 {
@@ -78,25 +80,31 @@ void ROSOutAppender::log(::ros::console::Level level, const char* str, const cha
   rosgraph_msgs::LogPtr msg(boost::make_shared<rosgraph_msgs::Log>());
 
   msg->header.stamp = ros::Time::now();
+  int priority = 6;
   if (level == ros::console::levels::Debug)
   {
     msg->level = rosgraph_msgs::Log::DEBUG;
+    priority = 7;
   }
   else if (level == ros::console::levels::Info)
   {
     msg->level = rosgraph_msgs::Log::INFO;
+    priority = 6;
   }
   else if (level == ros::console::levels::Warn)
   {
     msg->level = rosgraph_msgs::Log::WARN;
+    priority = 4;
   }
   else if (level == ros::console::levels::Error)
   {
     msg->level = rosgraph_msgs::Log::ERROR;
+    priority = 3;
   }
   else if (level == ros::console::levels::Fatal)
   {
     msg->level = rosgraph_msgs::Log::FATAL;
+    priority = 0;
   }
   msg->name = this_node::getName();
   msg->msg = str;
@@ -110,6 +118,14 @@ void ROSOutAppender::log(::ros::console::Level level, const char* str, const cha
 
   if (!disable_topics_){
     this_node::getAdvertisedTopics(msg->topics);
+    ::sd_journal_send(
+      "MESSAGE=%s", msg->msg.c_str(),
+      "PRIORITY=%i", priority,
+      "CODE_FILE=%s", msg->file.c_str(),
+      "CODE_LINE=%i", msg->line,
+      "CODE_FUNC=%s", msg->function.c_str(),
+      "SYSLOG_IDENTIFIER=%s", msg->name.c_str(),
+      NULL);
   }
 
   if (level == ::ros::console::levels::Fatal || level == ::ros::console::levels::Error)
