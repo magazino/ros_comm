@@ -840,13 +840,14 @@ class Publisher(Topic):
         @raise ROSException: if parameters are invalid     
         """
         super(Publisher, self).__init__(name, data_class, Registration.PUB)
+        self._last_message = None
 
         if subscriber_listener:
             self.impl.add_subscriber_listener(subscriber_listener)
         if tcp_nodelay:
             get_tcpros_handler().set_tcp_nodelay(self.resolved_name, tcp_nodelay)
         if latch:
-            self.impl.enable_latch()
+            self.impl.enable_latch(self)
         if headers:
             self.impl.add_headers(headers)
         if queue_size is not None:
@@ -880,6 +881,7 @@ class Publisher(Topic):
         try:
             self.impl.acquire()
             self.impl.publish(data)
+            self._last_message = data
         except genpy.SerializationError as e:
             # can't go to rospy.logerr(), b/c this could potentially recurse
             _logger.error(traceback.format_exc())
@@ -912,7 +914,6 @@ class _PublisherImpl(_TopicImpl):
         
         # publish latch, starts disabled
         self.is_latch = False
-        self.latch = None
         
         # maximum queue size for publishing messages
         self.queue_size = None
@@ -941,12 +942,13 @@ class _PublisherImpl(_TopicImpl):
         """
         self.headers.update(headers)
     
-    def enable_latch(self):
+    def enable_latch(self, publisher):
         """
         Enable publish() latch. The latch contains the last published
         message and is sent to any new subscribers.
         """
         self.is_latch = True
+        self.add_subscriber_listener(_LatchHelper(publisher))
         
     def set_queue_size(self, queue_size):
         self.queue_size = queue_size
@@ -1000,9 +1002,6 @@ class _PublisherImpl(_TopicImpl):
             self.publish(data, connection_override=c)
         for l in self.subscriber_listeners:
             l.peer_subscribe(self.resolved_name, self.publish, publish_single)
-        if self.is_latch and self.latch is not None:
-            with self.publock:
-                self.publish(self.latch, connection_override=c)
         return True
             
     def remove_connection(self, c):
@@ -1042,9 +1041,6 @@ class _PublisherImpl(_TopicImpl):
             else:
                 return
             
-        if self.is_latch:
-            self.latch = message
-
         if not self.has_connections():
             #publish() falls through
             return False
@@ -1111,6 +1107,20 @@ class _PublisherImpl(_TopicImpl):
                 c.close()
             except:
                 pass
+
+
+class _LatchHelper(SubscribeListener):
+
+    def __init__(self, publisher):
+        self.publisher = publisher
+
+    def peer_subscribe(self, resolved_name, publish, publish_single):
+        try:
+            self.publisher.impl.acquire()
+            if self.publisher._last_message is not None:
+                publish_single(self.publisher._last_message)
+        finally:
+            self.publisher.impl.release()
 
 #################################################################################
 # TOPIC MANAGER/LISTENER

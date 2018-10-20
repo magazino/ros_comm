@@ -451,7 +451,6 @@ class TCPROSTransport(Transport):
 
         # #1852 have to hold onto latched messages on subscriber side
         self.is_latched = False
-        self.latch = None
 
         # save the fileno separately so we can garbage collect the
         # socket but still unregister will poll objects
@@ -736,10 +735,6 @@ class TCPROSTransport(Transport):
             for m in msg_queue:
                 m._connection_header = self.header
                 
-            # #1852: keep track of last latched message
-            if self.is_latched and msg_queue:
-                self.latch = msg_queue[-1]
-            
             return msg_queue
 
         except DeserializationError as e:
