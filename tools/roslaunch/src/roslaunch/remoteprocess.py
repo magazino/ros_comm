@@ -141,7 +141,7 @@ class SSHChildROSLaunchProcess(roslaunch.server.ChildROSLaunchProcess):
         super(SSHChildROSLaunchProcess, self).__init__(name, args, {})
         self.machine = machine
         self.master_uri = master_uri
-        self.respawn = machine.respawn
+        self.respawn = machine.respawn or True
         self.respawn_delay = machine.respawn_delay or 0.0
         self.time_of_death = None
         self.ssh = self.sshin = self.sshout = self.ssherr = None
