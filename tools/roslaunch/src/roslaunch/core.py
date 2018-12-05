@@ -318,7 +318,7 @@ class Master(object):
             finally:
                 socket.setdefaulttimeout(to_orig) 
         except:
-            logging.getLogger('roslaunch.core').debug('master.is_running[%s]: False'%self.uri)
+            logging.getLogger('roslaunch.core').warn('master.is_running[%s]: False'%self.uri)
             return False
 
 ## number of seconds that a child machine is allowed to register with
