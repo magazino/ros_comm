@@ -391,7 +391,12 @@ class ROSLaunchRunner(object):
         @raise RLException: if master launch fails
         """
         m = self.config.master
-        is_running = m.is_running()
+        is_running = False
+        if not rosgraph.network.is_local_address(m.get_host()):
+            while not is_running:
+               is_running = m.is_running()
+        else:
+            is_running = m.is_running()
 
         if self.is_core and is_running:
             raise RLException("roscore cannot run as another roscore/master is already running. \nPlease kill other roscore/master processes before relaunching.\nThe ROS_MASTER_URI is %s"%(m.uri))
