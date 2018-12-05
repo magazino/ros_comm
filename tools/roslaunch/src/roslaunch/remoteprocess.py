@@ -203,6 +203,12 @@ class SSHChildROSLaunchProcess(roslaunch.server.ChildROSLaunchProcess):
                         ssh.connect(address, port, username, timeout=TIMEOUT_SSH_CONNECT, key_filename=identity_file)
                     else: #use SSH with login/pass
                         ssh.connect(address, port, username, password, timeout=TIMEOUT_SSH_CONNECT)
+                    transport = ssh.get_transport()
+                    if transport:
+                        transport.set_keepalive(10)
+                    else:
+                        _logger.error("Could not configure keep alive of the ssh client")
+
                 except paramiko.BadHostKeyException:
                     _logger.error(traceback.format_exc())
                     err_msg =  "Unable to verify host key for remote computer[%s:%s]"%(address, port)
