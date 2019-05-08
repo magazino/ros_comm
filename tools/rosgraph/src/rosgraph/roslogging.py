@@ -141,7 +141,7 @@ def configure_logging(logname, level=logging.INFO, filename=None, env=None):
 
     # the log dir itself should not be symlinked as latest
     if logfile_dir != log_dir:
-        if sys.platform not in ['win32']:
+        if sys.platform not in ['win32'] and log_filename != '/dev/null':
             try:
                 success = renew_latest_logdir(logfile_dir)
                 if not success:
