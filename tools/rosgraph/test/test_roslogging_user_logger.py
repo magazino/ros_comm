@@ -126,7 +126,7 @@ def test_roslogging_user_logger():
             '<filename>',
             '<lineno>',
             '<func_name>',
-            '/unnamed',
+            '<unknown_node_name>',
             '[0-9]*\.[0-9]*',
         ])
         assert_regexp_matches(lout.getvalue().strip(), log_expected)
