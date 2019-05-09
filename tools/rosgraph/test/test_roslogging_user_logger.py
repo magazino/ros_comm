@@ -121,7 +121,7 @@ def test_roslogging_user_logger():
             os.environ['ROS_IP'],
             msg,
             '[0-9]*\.[0-9]*',
-            '[0-9]*',
+            '-?[0-9]*',
             'rosout.custom_logger_test',
             '<filename>',
             '<lineno>',
