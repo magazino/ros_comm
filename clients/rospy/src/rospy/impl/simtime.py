@@ -35,6 +35,7 @@
 """Internal-use: Support for simulated clock."""
 
 import traceback
+from threading import Event
 
 import rosgraph
 from rosgraph_msgs.msg import Clock
@@ -51,6 +52,9 @@ _USE_SIMTIME = '/use_sim_time'
 _rostime_sub = None
 _rosclock_sub = None
 
+# Initialization event for valid ros time
+_init_event = Event()
+
 def _is_use_simtime():
     # in order to prevent circular dependencies, this does not use the
     # builtin libraries for interacting with the parameter server, at least
@@ -65,6 +69,11 @@ def _is_use_simtime():
 from rospy.rostime import _set_rostime
 def _set_rostime_clock_wrapper(time_msg):
     _set_rostime(time_msg.clock)
+    if not rospy.rostime.is_rostime_initialized() and time_msg.clock.secs > 0:
+        rospy.rostime.set_rostime_initialized(True)
+        global _init_event
+        _init_event.set()
+
 def _set_rostime_time_wrapper(time_msg):
     _set_rostime(time_msg.rostime)
     
@@ -78,15 +87,18 @@ def init_simtime():
     try:
         if not _is_use_simtime():
             logger.info("%s is not set, will not subscribe to simulated time [%s] topic"%(_USE_SIMTIME, _ROSCLOCK))
+            rospy.rostime.set_rostime_initialized(True)
         else:
-            global _rostime_sub, _clock_sub
+            global _rostime_sub, _clock_sub, _init_event
             if _rostime_sub is None:
                 logger.info("initializing %s core topic"%_ROSCLOCK)
                 _clock_sub = rospy.topics.Subscriber(_ROSCLOCK, Clock, _set_rostime_clock_wrapper, queue_size=1)
                 logger.info("connected to core topic %s"%_ROSCLOCK)
 
-                _set_rostime(rospy.rostime.Time(0, 0))
-        rospy.rostime.set_rostime_initialized(True)
+                if not _init_event.wait(60.0):
+                    raise rospy.exceptions.ROSInitException("Failed to get valid ros time")
+                if rospy.core.is_shutdown():
+                    raise rospy.exceptions.ROSInterruptException("rospy shutdown")
         return True
     except Exception as e:
         logger.error("Unable to initialize %s: %s\n%s", _ROSCLOCK, e, traceback.format_exc())
