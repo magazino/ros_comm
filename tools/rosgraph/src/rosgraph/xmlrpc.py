@@ -129,6 +129,26 @@ class ThreadingXMLRPCServer(socketserver.ThreadingMixIn, SimpleXMLRPCServer):
             logger = logging.getLogger('xmlrpc')
             if logger:
                 logger.error(traceback.format_exc())
+
+    def serve_forever(self, poll_interval=0.5):
+        """Handle one request at a time until shutdown.
+        Polls for shutdown every poll_interval seconds. Ignores
+        self.timeout. If you need to do periodic tasks, do them in
+        another thread.
+        """
+        self._BaseServer__is_shut_down.clear()
+        e = select.epoll()
+        try:
+            e.register(self.fileno(), select.EPOLLIN)
+            while not self._BaseServer__shutdown_request:
+                e.poll()
+                if self._BaseServer__shutdown_request:
+                    break
+                self._handle_request_noblock()
+        finally:
+            e.unregister(self.fileno())
+            self._BaseServer__shutdown_request = False
+            self._BaseServer__is_shut_down.set()
     
 class ForkingXMLRPCServer(socketserver.ForkingMixIn, SimpleXMLRPCServer):
     """
