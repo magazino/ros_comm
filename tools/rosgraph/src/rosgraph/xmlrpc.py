@@ -130,6 +130,26 @@ class ThreadingXMLRPCServer(socketserver.ThreadingMixIn, SimpleXMLRPCServer):
             if logger:
                 logger.error(traceback.format_exc())
 
+    if hasattr(select, 'epoll'):
+        def serve_forever(self):
+            """
+            Custom implementation of serve_forever which avoids polling
+            on the file descriptor.
+            """
+            self._BaseServer__is_shut_down.clear()
+            poller = select.epoll()
+            try:
+                poller.register(self.fileno(), select.EPOLLIN)
+                while not self._BaseServer__shutdown_request:
+                    poller.poll()
+                    if self._BaseServer__shutdown_request:
+                        break
+                    self._handle_request_noblock()
+            finally:
+                poller.unregister(self.fileno())
+                self._BaseServer__shutdown_request = False
+                self._BaseServer__is_shut_down.set()
+
 
 # ForkingMixIn and the Forking classes mentioned below are only available on POSIX platforms.
 if hasattr(socketserver, "ForkingMixIn"):
