@@ -48,7 +48,7 @@ try:
 except ImportError:
     import xmlrpclib as xmlrpcclient
 
-from rospy.core import is_shutdown, is_shutdown_requested, xmlrpcapi, \
+from rospy.core import is_shutdown_requested, xmlrpcapi, \
     logfatal, logwarn, loginfo, logerr, logdebug, \
     signal_shutdown, add_preshutdown_hook
 from rospy.names import get_caller_id, get_namespace
@@ -224,7 +224,7 @@ class RegManager(RegistrationListener):
             master = xmlrpcapi(master_uri)
             self.logger.info("Registering with master node %s", master_uri)
 
-        while not registered and not is_shutdown():
+        while not registered and not is_shutdown_requested():
             try:
                 try:
                     # prevent TopicManager and ServiceManager from accepting registrations until we are done
@@ -290,12 +290,12 @@ class RegManager(RegistrationListener):
         queue and generates topic connections
         """
         #Connect the topics
-        while not self.handler.done and not is_shutdown():
+        while not self.handler.done and not is_shutdown_requested():
             cond = self.cond
             try:
                 cond.acquire()
                 if not self.updates:
-                    cond.wait(0.5)
+                    cond.wait()
                 if self.updates:
                     #work from the end as these are the most up-to-date
                     topic, uris = self.updates.pop()
@@ -324,7 +324,7 @@ class RegManager(RegistrationListener):
             if code != 1:
                 logdebug("Unable to connect subscriber to publisher [%s] for topic [%s]: %s", uri, topic, msg)
         except Exception as e:
-            if not is_shutdown():
+            if not is_shutdown_requested():
                 logdebug("Unable to connect to publisher [%s] for topic [%s]: %s"%(uri, topic, traceback.format_exc()))
         
     def cleanup(self, reason):
@@ -439,7 +439,7 @@ class RegManager(RegistrationListener):
             args = (get_caller_id(), resolved_name, data_type_or_uri, self.uri)
             registered = False
             first = True
-            while not registered and not is_shutdown():
+            while not registered and not is_shutdown_requested():
                 try:
                     if reg_type == Registration.PUB:
                         self.logger.debug("master.registerPublisher(%s, %s, %s, %s)"%args)
