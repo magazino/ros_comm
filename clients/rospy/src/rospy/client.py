@@ -126,7 +126,7 @@ def spin():
     logdebug("node[%s, %s] entering spin(), pid[%s]", rospy.core.get_caller_id(), rospy.core.get_node_uri(), os.getpid())        
     try:
         while not rospy.core.is_shutdown():
-            rospy.rostime.wallsleep(0.5)
+            rospy.rostime.wallsleep(1.0)
     except KeyboardInterrupt:
         logdebug("keyboard interrupt, shutting down")
         rospy.core.signal_shutdown('keyboard interrupt')
