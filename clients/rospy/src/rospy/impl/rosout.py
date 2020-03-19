@@ -62,6 +62,7 @@ _rospy_to_logging_levels = {
 }
 
 def init_rosout():
+    return True
     logger = logging.getLogger("rospy.rosout")
     try:
         global _rosout_pub
