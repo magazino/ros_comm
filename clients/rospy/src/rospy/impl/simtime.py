@@ -55,6 +55,11 @@ _rosclock_sub = None
 # Initialization event for valid ros time
 _init_event = Event()
 
+def _set_init_event_on_shutdown(reason):
+    global _init_event
+    if not _init_event.isSet():
+        _init_event.set()
+
 def _is_use_simtime():
     # in order to prevent circular dependencies, this does not use the
     # builtin libraries for interacting with the parameter server, at least
@@ -91,6 +96,7 @@ def init_simtime():
         else:
             global _rostime_sub, _clock_sub, _init_event
             if _rostime_sub is None:
+                rospy.core.add_shutdown_hook(_set_init_event_on_shutdown)
                 logger.info("initializing %s core topic"%_ROSCLOCK)
                 _clock_sub = rospy.topics.Subscriber(_ROSCLOCK, Clock, _set_rostime_clock_wrapper, queue_size=1)
                 logger.info("connected to core topic %s"%_ROSCLOCK)
